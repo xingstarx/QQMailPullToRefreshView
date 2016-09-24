@@ -29,12 +29,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.start:
-
-
+                mMQailRefreshView.start();
                 break;
             case R.id.stop:
-
-
+                mMQailRefreshView.stop();
                 break;
         }
     }

@@ -1,11 +1,18 @@
 package com.xingstarx.refreshview.view;
 
+import android.animation.Animator;
+import android.animation.AnimatorSet;
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
+import android.view.animation.LinearInterpolator;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by xiongxingxing on 16/9/24.
@@ -15,9 +22,14 @@ public class QQMailRefreshView extends View {
     public static final String TAG = "QQMailRefreshView";
     private int mWidth;
     private int mHeight;
-    private int mCircleRadius = dp2px(getContext(), 10);
+    private float MAX_CIRCLE_RADIUS = dp2px(getContext(), 20);
+    private float MIN_CIRCLE_RADIUS = dp2px(getContext(), 14);
+    private float mCircleRadius = MAX_CIRCLE_RADIUS;
     private Paint mPaint;
     private int mColors[] = new int[]{0xffffe464, 0xfff75c50, 0xffceee88};
+    private int DEFAULT_DURATION = 1000;
+    private List<Animator> animatorList = new ArrayList<>();
+    private float mChangeWidth;
 
     public QQMailRefreshView(Context context) {
         super(context);
@@ -48,22 +60,56 @@ public class QQMailRefreshView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        float cx;
-        float cy;
 
-        cx = mWidth / 2f;
-        cy = mHeight / 2f;
         mPaint.setColor(mColors[0]);
-        canvas.drawCircle(cx, cy, mCircleRadius, mPaint);
+        canvas.drawCircle(mWidth / 2f + mChangeWidth, mHeight / 2f, mCircleRadius, mPaint);
 
     }
 
+    public void start() {
+        ValueAnimator lengthAnimator = ValueAnimator.ofFloat(0, dp2px(getContext(), 100));
+        lengthAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                mChangeWidth = (float) animation.getAnimatedValue();
+            }
+        });
+
+        ValueAnimator circleRadiusAnimator = ValueAnimator.ofFloat(MAX_CIRCLE_RADIUS, MIN_CIRCLE_RADIUS);
+        circleRadiusAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                mCircleRadius = (float) animation.getAnimatedValue();
+                invalidate();
+            }
+        });
+
+        AnimatorSet animatorSet = new AnimatorSet();
+        animatorSet.playTogether(lengthAnimator, circleRadiusAnimator);
+        animatorSet.setDuration(DEFAULT_DURATION);
+        animatorSet.setInterpolator(new LinearInterpolator());
+        animatorList.add(animatorSet);
+        animatorSet.start();
+    }
+
+    public void stop() {
+        clearAnimator();
+    }
+
+    private void clearAnimator() {
+        for(int i = 0; i < animatorList.size(); i++) {
+            Animator animator = animatorList.get(i);
+            if (animator.isRunning()) {
+                animator.cancel();
+            }
+        }
+        animatorList.clear();
+    }
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
         mWidth = w;
         mHeight = h;
-
         Log.e(TAG, "mWidth == " + mWidth + ", mHeight == " + mHeight);
     }
 
