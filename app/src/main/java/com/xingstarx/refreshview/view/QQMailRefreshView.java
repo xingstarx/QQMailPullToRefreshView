@@ -2,11 +2,11 @@ package com.xingstarx.refreshview.view;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
-import android.animation.AnimatorSet;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.support.annotation.NonNull;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
@@ -25,15 +25,17 @@ public class QQMailRefreshView extends View {
     private static final int PLAY_START_ANIMATION = 1;
     private int mWidth;
     private int mHeight;
-    private float MAX_CIRCLE_RADIUS = dp2px(getContext(), 20);
-    private float MIN_CIRCLE_RADIUS = dp2px(getContext(), 14);
-    private float mCircleRadius;
+    private final float MAX_CIRCLE_RADIUS = dp2px(getContext(), 20);
+    private final float MIN_CIRCLE_RADIUS = dp2px(getContext(), 14);
+    private final int MAX_PAINT_ALPHA = 255;
+    private final int MIN_PAINT_ALPHA = 150;
+    private final int MAX_CHANGE_WIDTH = dp2px(getContext(), 100);
+
     private Paint mPaint;
     private int mColors[] = new int[]{0xffffe464, 0xffef4a4a, 0xffceee88};
     private int DEFAULT_DURATION = 500;
     private List<Animator> animatorList = new ArrayList<>();
     private float mChangeWidth;
-    private int mPaintAlpha;
     private int step;
     private int playState;
 
@@ -54,8 +56,6 @@ public class QQMailRefreshView extends View {
 
     private void initView() {
         initPaint();
-        mPaintAlpha = 255;
-        mCircleRadius = MAX_CIRCLE_RADIUS;
         mChangeWidth = 0;
     }
 
@@ -69,10 +69,47 @@ public class QQMailRefreshView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        mPaint.setColor(mColors[1]);
-        mPaint.setAlpha(mPaintAlpha);
-        canvas.drawCircle(mWidth / 2f + mChangeWidth, mHeight / 2f, mCircleRadius, mPaint);
+        for (int i = 0; i < mColors.length; i++) {
+            mPaint.setColor(mColors[i]);
+            drawCirce(canvas, MAX_CHANGE_WIDTH * (i - 1) + mChangeWidth, mPaint);
+        }
 
+    }
+
+    /**
+     * 通过数学计算得到的表达式,x代表变化的长度的值,根据变化的长度,计算出圆圈的半径
+     * y = (M - N) / a * x + M (x < 0)
+     * y = (N - M) / a * x + M (x > 0)
+     */
+    private float getFuncRadius(float canvasTranslateX) {
+        if (canvasTranslateX < 0) {
+            return (MAX_CIRCLE_RADIUS - MIN_CIRCLE_RADIUS) / MAX_CHANGE_WIDTH * canvasTranslateX + MAX_CIRCLE_RADIUS;
+        } else {
+            return (MIN_CIRCLE_RADIUS - MAX_CIRCLE_RADIUS) / MAX_CHANGE_WIDTH * canvasTranslateX + MAX_CIRCLE_RADIUS;
+        }
+    }
+
+    /**
+     * 通过数学计算得到的表达式,x代表变化的长度的值,根据变化的长度,计算出颜色的alpha值 ,跟上面的解析式是一样的
+     * y = (M - N) / a * x + M (x < 0)
+     * y = (N - M) / a * x + M (x > 0)
+     */
+    private int getFuncAlpha(float canvasTranslateX) {
+        if (canvasTranslateX < 0) {
+            return (int) (canvasTranslateX * (MAX_PAINT_ALPHA - MIN_PAINT_ALPHA) / MAX_CHANGE_WIDTH + MAX_PAINT_ALPHA);
+        } else {
+            return (int) (canvasTranslateX * (MIN_PAINT_ALPHA - MAX_PAINT_ALPHA) / MAX_CHANGE_WIDTH + MAX_PAINT_ALPHA);
+        }
+    }
+
+    private void drawCirce(Canvas canvas, float canvasTranslateX, @NonNull Paint paint) {
+        if (canvasTranslateX > MAX_CHANGE_WIDTH || canvasTranslateX < -MAX_CHANGE_WIDTH) {
+            return;
+        }
+        paint.setAlpha(getFuncAlpha(canvasTranslateX));
+        canvas.translate(canvasTranslateX, 0);
+        canvas.drawCircle(mWidth / 2, mHeight / 2, getFuncRadius(canvasTranslateX), paint);
+        canvas.translate(-canvasTranslateX, 0);
     }
 
 
@@ -92,36 +129,18 @@ public class QQMailRefreshView extends View {
     }
 
     public void startDecreaseAnimation() {
-        ValueAnimator lengthAnimator = ValueAnimator.ofFloat(0, dp2px(getContext(), 100));
+        ValueAnimator lengthAnimator = ValueAnimator.ofFloat(0, MAX_CHANGE_WIDTH);
         lengthAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
                 mChangeWidth = (float) animation.getAnimatedValue();
-            }
-        });
-
-        ValueAnimator circleRadiusAnimator = ValueAnimator.ofFloat(MAX_CIRCLE_RADIUS, MIN_CIRCLE_RADIUS);
-        circleRadiusAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-            @Override
-            public void onAnimationUpdate(ValueAnimator animation) {
-                mCircleRadius = (float) animation.getAnimatedValue();
-            }
-        });
-
-        ValueAnimator alphaAnimator = ValueAnimator.ofInt(255, 150);
-        alphaAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-            @Override
-            public void onAnimationUpdate(ValueAnimator animation) {
-                mPaintAlpha = (int) animation.getAnimatedValue();
                 invalidate();
             }
         });
 
-        AnimatorSet animatorSet = new AnimatorSet();
-        animatorSet.playTogether(lengthAnimator, circleRadiusAnimator, alphaAnimator);
-        animatorSet.setDuration(DEFAULT_DURATION);
-        animatorSet.setInterpolator(new LinearInterpolator());
-        animatorSet.addListener(new AnimatorListenerAdapter() {
+        lengthAnimator.setDuration(DEFAULT_DURATION);
+        lengthAnimator.setInterpolator(new LinearInterpolator());
+        lengthAnimator.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
                 if (playState == PLAY_START_ANIMATION) {
@@ -130,41 +149,23 @@ public class QQMailRefreshView extends View {
                 }
             }
         });
-        animatorList.add(animatorSet);
-        animatorSet.start();
+        animatorList.add(lengthAnimator);
+        lengthAnimator.start();
     }
 
     private void startIncreaseAnimation() {
-        ValueAnimator lengthAnimator = ValueAnimator.ofFloat(-dp2px(getContext(), 100), 0);
+        ValueAnimator lengthAnimator = ValueAnimator.ofFloat(-MAX_CHANGE_WIDTH, 0);
         lengthAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
                 mChangeWidth = (float) animation.getAnimatedValue();
-            }
-        });
-
-        ValueAnimator circleRadiusAnimator = ValueAnimator.ofFloat(MIN_CIRCLE_RADIUS, MAX_CIRCLE_RADIUS);
-        circleRadiusAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-            @Override
-            public void onAnimationUpdate(ValueAnimator animation) {
-                mCircleRadius = (float) animation.getAnimatedValue();
-            }
-        });
-
-        ValueAnimator alphaAnimator = ValueAnimator.ofInt(150, 255);
-        alphaAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-            @Override
-            public void onAnimationUpdate(ValueAnimator animation) {
-                mPaintAlpha = (int) animation.getAnimatedValue();
                 invalidate();
             }
         });
 
-        AnimatorSet animatorSet = new AnimatorSet();
-        animatorSet.playTogether(lengthAnimator, circleRadiusAnimator, alphaAnimator);
-        animatorSet.setDuration(DEFAULT_DURATION);
-        animatorSet.setInterpolator(new LinearInterpolator());
-        animatorSet.addListener(new AnimatorListenerAdapter() {
+        lengthAnimator.setDuration(DEFAULT_DURATION);
+        lengthAnimator.setInterpolator(new LinearInterpolator());
+        lengthAnimator.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
                 if (playState == PLAY_START_ANIMATION) {
@@ -173,8 +174,8 @@ public class QQMailRefreshView extends View {
                 }
             }
         });
-        animatorList.add(animatorSet);
-        animatorSet.start();
+        animatorList.add(lengthAnimator);
+        lengthAnimator.start();
     }
 
     private void clearAnimator() {
