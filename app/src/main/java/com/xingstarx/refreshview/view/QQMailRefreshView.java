@@ -24,12 +24,13 @@ public class QQMailRefreshView extends View {
     private int mHeight;
     private float MAX_CIRCLE_RADIUS = dp2px(getContext(), 20);
     private float MIN_CIRCLE_RADIUS = dp2px(getContext(), 14);
-    private float mCircleRadius = MAX_CIRCLE_RADIUS;
+    private float mCircleRadius;
     private Paint mPaint;
-    private int mColors[] = new int[]{0xffffe464, 0xfff75c50, 0xffceee88};
+    private int mColors[] = new int[]{0xffffe464, 0xffef4a4a, 0xffceee88};
     private int DEFAULT_DURATION = 1000;
     private List<Animator> animatorList = new ArrayList<>();
     private float mChangeWidth;
+    private int mPaintAlpha;
 
     public QQMailRefreshView(Context context) {
         super(context);
@@ -48,6 +49,9 @@ public class QQMailRefreshView extends View {
 
     private void initView() {
         initPaint();
+        mPaintAlpha = 255;
+        mCircleRadius = MAX_CIRCLE_RADIUS;
+        mChangeWidth = 0;
     }
 
     private void initPaint() {
@@ -60,8 +64,8 @@ public class QQMailRefreshView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-
-        mPaint.setColor(mColors[0]);
+        mPaint.setColor(mColors[1]);
+        mPaint.setAlpha(mPaintAlpha);
         canvas.drawCircle(mWidth / 2f + mChangeWidth, mHeight / 2f, mCircleRadius, mPaint);
 
     }
@@ -80,12 +84,20 @@ public class QQMailRefreshView extends View {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
                 mCircleRadius = (float) animation.getAnimatedValue();
+            }
+        });
+
+        ValueAnimator alphaAnimator = ValueAnimator.ofInt(255, 150);
+        alphaAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                mPaintAlpha = (int) animation.getAnimatedValue();
                 invalidate();
             }
         });
 
         AnimatorSet animatorSet = new AnimatorSet();
-        animatorSet.playTogether(lengthAnimator, circleRadiusAnimator);
+        animatorSet.playTogether(lengthAnimator, circleRadiusAnimator, alphaAnimator);
         animatorSet.setDuration(DEFAULT_DURATION);
         animatorSet.setInterpolator(new LinearInterpolator());
         animatorList.add(animatorSet);
