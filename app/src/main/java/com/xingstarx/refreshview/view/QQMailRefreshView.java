@@ -1,6 +1,7 @@
 package com.xingstarx.refreshview.view;
 
 import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
 import android.animation.ValueAnimator;
 import android.content.Context;
@@ -20,6 +21,8 @@ import java.util.List;
 
 public class QQMailRefreshView extends View {
     public static final String TAG = "QQMailRefreshView";
+    private static final int PLAY_STOP_ANIMATION = 0;
+    private static final int PLAY_START_ANIMATION = 1;
     private int mWidth;
     private int mHeight;
     private float MAX_CIRCLE_RADIUS = dp2px(getContext(), 20);
@@ -27,10 +30,12 @@ public class QQMailRefreshView extends View {
     private float mCircleRadius;
     private Paint mPaint;
     private int mColors[] = new int[]{0xffffe464, 0xffef4a4a, 0xffceee88};
-    private int DEFAULT_DURATION = 1000;
+    private int DEFAULT_DURATION = 500;
     private List<Animator> animatorList = new ArrayList<>();
     private float mChangeWidth;
     private int mPaintAlpha;
+    private int step;
+    private int playState;
 
     public QQMailRefreshView(Context context) {
         super(context);
@@ -70,7 +75,23 @@ public class QQMailRefreshView extends View {
 
     }
 
+
     public void start() {
+        if (playState == PLAY_STOP_ANIMATION) {
+            clearAnimator();
+            playState = PLAY_START_ANIMATION;
+            startDecreaseAnimation();
+        }
+    }
+
+    public void stop() {
+        if (playState == PLAY_START_ANIMATION) {
+            playState = PLAY_STOP_ANIMATION;
+            clearAnimator();
+        }
+    }
+
+    public void startDecreaseAnimation() {
         ValueAnimator lengthAnimator = ValueAnimator.ofFloat(0, dp2px(getContext(), 100));
         lengthAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
@@ -100,12 +121,60 @@ public class QQMailRefreshView extends View {
         animatorSet.playTogether(lengthAnimator, circleRadiusAnimator, alphaAnimator);
         animatorSet.setDuration(DEFAULT_DURATION);
         animatorSet.setInterpolator(new LinearInterpolator());
+        animatorSet.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (playState == PLAY_START_ANIMATION) {
+                    step++;
+                    startIncreaseAnimation();
+                }
+            }
+        });
         animatorList.add(animatorSet);
         animatorSet.start();
     }
 
-    public void stop() {
-        clearAnimator();
+    private void startIncreaseAnimation() {
+        ValueAnimator lengthAnimator = ValueAnimator.ofFloat(-dp2px(getContext(), 100), 0);
+        lengthAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                mChangeWidth = (float) animation.getAnimatedValue();
+            }
+        });
+
+        ValueAnimator circleRadiusAnimator = ValueAnimator.ofFloat(MIN_CIRCLE_RADIUS, MAX_CIRCLE_RADIUS);
+        circleRadiusAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                mCircleRadius = (float) animation.getAnimatedValue();
+            }
+        });
+
+        ValueAnimator alphaAnimator = ValueAnimator.ofInt(150, 255);
+        alphaAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                mPaintAlpha = (int) animation.getAnimatedValue();
+                invalidate();
+            }
+        });
+
+        AnimatorSet animatorSet = new AnimatorSet();
+        animatorSet.playTogether(lengthAnimator, circleRadiusAnimator, alphaAnimator);
+        animatorSet.setDuration(DEFAULT_DURATION);
+        animatorSet.setInterpolator(new LinearInterpolator());
+        animatorSet.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (playState == PLAY_START_ANIMATION) {
+                    step++;
+                    startDecreaseAnimation();
+                }
+            }
+        });
+        animatorList.add(animatorSet);
+        animatorSet.start();
     }
 
     private void clearAnimator() {
