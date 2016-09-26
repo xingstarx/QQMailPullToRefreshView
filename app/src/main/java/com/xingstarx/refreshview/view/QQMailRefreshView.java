@@ -24,15 +24,15 @@ public class QQMailRefreshView extends View {
     private static final int PLAY_START_ANIMATION = 1;
     private int mWidth;
     private int mHeight;
-    private final float MAX_CIRCLE_RADIUS = dp2px(getContext(), 20);
-    private final float MIN_CIRCLE_RADIUS = dp2px(getContext(), 14);
+    private final float MAX_CIRCLE_RADIUS = dp2px(getContext(), 6);
+    private final float MIN_CIRCLE_RADIUS = dp2px(getContext(), 4);
     private final int MAX_PAINT_ALPHA = 255;
     private final int MIN_PAINT_ALPHA = 150;
-    private final int MAX_CHANGE_WIDTH = dp2px(getContext(), 100);
+    private final int MAX_CHANGE_WIDTH = dp2px(getContext(), 20);
 
     private Paint mPaint;
     private int mColors[] = new int[]{0xffffe464, 0xffef4a4a, 0xffceee88};
-    private int DEFAULT_DURATION = 2000;
+    private int DEFAULT_DURATION = 1000;
     private List<Animator> animatorList = new ArrayList<>();
     private float mChangeWidth;
     private int playState;
