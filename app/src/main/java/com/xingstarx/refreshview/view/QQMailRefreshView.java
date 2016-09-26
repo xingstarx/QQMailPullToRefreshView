@@ -1,7 +1,6 @@
 package com.xingstarx.refreshview.view;
 
 import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
@@ -33,10 +32,9 @@ public class QQMailRefreshView extends View {
 
     private Paint mPaint;
     private int mColors[] = new int[]{0xffffe464, 0xffef4a4a, 0xffceee88};
-    private int DEFAULT_DURATION = 500;
+    private int DEFAULT_DURATION = 2000;
     private List<Animator> animatorList = new ArrayList<>();
     private float mChangeWidth;
-    private int step;
     private int playState;
 
     public QQMailRefreshView(Context context) {
@@ -103,7 +101,10 @@ public class QQMailRefreshView extends View {
     }
 
     private void drawCirce(Canvas canvas, float canvasTranslateX, @NonNull Paint paint) {
-        if (canvasTranslateX > MAX_CHANGE_WIDTH || canvasTranslateX < -MAX_CHANGE_WIDTH) {
+        if (canvasTranslateX > MAX_CHANGE_WIDTH) {
+            canvasTranslateX -= 3 * MAX_CHANGE_WIDTH;
+        }
+        if (canvasTranslateX < -MAX_CHANGE_WIDTH) {
             return;
         }
         paint.setAlpha(getFuncAlpha(canvasTranslateX));
@@ -117,7 +118,7 @@ public class QQMailRefreshView extends View {
         if (playState == PLAY_STOP_ANIMATION) {
             clearAnimator();
             playState = PLAY_START_ANIMATION;
-            startDecreaseAnimation();
+            startChangeWidthAnimation();
         }
     }
 
@@ -128,8 +129,8 @@ public class QQMailRefreshView extends View {
         }
     }
 
-    public void startDecreaseAnimation() {
-        ValueAnimator lengthAnimator = ValueAnimator.ofFloat(0, MAX_CHANGE_WIDTH);
+    public void startChangeWidthAnimation() {
+        ValueAnimator lengthAnimator = ValueAnimator.ofFloat(0, 3 * MAX_CHANGE_WIDTH);
         lengthAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
@@ -140,40 +141,7 @@ public class QQMailRefreshView extends View {
 
         lengthAnimator.setDuration(DEFAULT_DURATION);
         lengthAnimator.setInterpolator(new LinearInterpolator());
-        lengthAnimator.addListener(new AnimatorListenerAdapter() {
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                if (playState == PLAY_START_ANIMATION) {
-                    step++;
-                    startIncreaseAnimation();
-                }
-            }
-        });
-        animatorList.add(lengthAnimator);
-        lengthAnimator.start();
-    }
-
-    private void startIncreaseAnimation() {
-        ValueAnimator lengthAnimator = ValueAnimator.ofFloat(-MAX_CHANGE_WIDTH, 0);
-        lengthAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-            @Override
-            public void onAnimationUpdate(ValueAnimator animation) {
-                mChangeWidth = (float) animation.getAnimatedValue();
-                invalidate();
-            }
-        });
-
-        lengthAnimator.setDuration(DEFAULT_DURATION);
-        lengthAnimator.setInterpolator(new LinearInterpolator());
-        lengthAnimator.addListener(new AnimatorListenerAdapter() {
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                if (playState == PLAY_START_ANIMATION) {
-                    step++;
-                    startDecreaseAnimation();
-                }
-            }
-        });
+        lengthAnimator.setRepeatCount(Integer.MAX_VALUE);
         animatorList.add(lengthAnimator);
         lengthAnimator.start();
     }
