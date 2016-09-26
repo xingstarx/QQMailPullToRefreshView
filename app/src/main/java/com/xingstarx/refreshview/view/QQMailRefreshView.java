@@ -54,6 +54,10 @@ public class QQMailRefreshView extends View {
 
     private void initView() {
         initPaint();
+        init();
+    }
+
+    private void init() {
         mChangeWidth = 0;
     }
 
@@ -126,6 +130,8 @@ public class QQMailRefreshView extends View {
         if (playState == PLAY_START_ANIMATION) {
             playState = PLAY_STOP_ANIMATION;
             clearAnimator();
+            init();
+            invalidate();
         }
     }
 
