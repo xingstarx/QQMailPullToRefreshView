@@ -25,17 +25,18 @@ public class QQMailRefreshView extends View {
     private int mWidth;
     private int mHeight;
     private final float MAX_CIRCLE_RADIUS = dp2px(getContext(), 6);
-    private final float MIN_CIRCLE_RADIUS = dp2px(getContext(), 4);
+    private final float MIN_CIRCLE_RADIUS = dp2px(getContext(), 5);
     private final int MAX_PAINT_ALPHA = 255;
     private final int MIN_PAINT_ALPHA = 150;
     private final int MAX_CHANGE_WIDTH = dp2px(getContext(), 20);
 
     private Paint mPaint;
     private int mColors[] = new int[]{0xffffe464, 0xffef4a4a, 0xffceee88};
-    private int DEFAULT_DURATION = 1000;
+    private int DEFAULT_DURATION = 900;
     private List<Animator> animatorList = new ArrayList<>();
     private float mChangeWidth;
     private int playState;
+    private float offset = dp2px(getContext(), 10);
 
     public QQMailRefreshView(Context context) {
         super(context);
@@ -79,6 +80,28 @@ public class QQMailRefreshView extends View {
     }
 
     /**
+     * 用来模拟运动的速率,中间快,边缘慢
+     */
+    private float getImitationTranslateX(float canvasTranslateX) {
+//        return canvasTranslateX;
+
+        if (canvasTranslateX >= -MAX_CHANGE_WIDTH / 2f && canvasTranslateX <= MAX_CHANGE_WIDTH / 2f) {
+            return canvasTranslateX * 1.25f;
+        } else if (canvasTranslateX > MAX_CHANGE_WIDTH / 2f) {
+            return 0.75f * canvasTranslateX + MAX_CHANGE_WIDTH / 4f;
+        } else {
+            return 0.75f * canvasTranslateX - MAX_CHANGE_WIDTH / 4f;
+        }
+//        if (canvasTranslateX >= -MAX_CHANGE_WIDTH / 2f && canvasTranslateX <= MAX_CHANGE_WIDTH / 2f) {
+//            return canvasTranslateX * 1.5f;
+//        } else if (canvasTranslateX > MAX_CHANGE_WIDTH / 2f) {
+//            return 0.5f * canvasTranslateX + MAX_CHANGE_WIDTH / 2f;
+//        } else {
+//            return 0.5f * canvasTranslateX - MAX_CHANGE_WIDTH / 2f;
+//        }
+    }
+
+    /**
      * 通过数学计算得到的表达式,x代表变化的长度的值,根据变化的长度,计算出圆圈的半径
      * y = (M - N) / a * x + M (x < 0)
      * y = (N - M) / a * x + M (x > 0)
@@ -105,16 +128,33 @@ public class QQMailRefreshView extends View {
     }
 
     private void drawCirce(Canvas canvas, float canvasTranslateX, @NonNull Paint paint) {
-        if (canvasTranslateX > MAX_CHANGE_WIDTH) {
-            canvasTranslateX -= 3 * MAX_CHANGE_WIDTH;
+        float radius;
+        float imitationTranslateX;
+        int alpha;
+        if (canvasTranslateX >= MAX_CHANGE_WIDTH && canvasTranslateX <= MAX_CHANGE_WIDTH + offset) {
+            radius = getFuncRadius(canvasTranslateX);
+            alpha = getFuncAlpha(canvasTranslateX);
+            canvasTranslateX = MAX_CHANGE_WIDTH;
+            imitationTranslateX = getImitationTranslateX(canvasTranslateX);
+        } else if (canvasTranslateX > MAX_CHANGE_WIDTH + offset && canvasTranslateX <= MAX_CHANGE_WIDTH + 2 * offset) {
+            radius = getFuncRadius((MAX_CHANGE_WIDTH + offset) * 2 - canvasTranslateX);
+            alpha = getFuncAlpha((MAX_CHANGE_WIDTH + offset) * 2 - canvasTranslateX);
+            canvasTranslateX = -MAX_CHANGE_WIDTH;
+            imitationTranslateX = getImitationTranslateX(canvasTranslateX);
+        } else if (canvasTranslateX > MAX_CHANGE_WIDTH + 2 * offset && canvasTranslateX <= 3 * MAX_CHANGE_WIDTH + 2 * offset) {
+            canvasTranslateX = canvasTranslateX - 2 * MAX_CHANGE_WIDTH - 2 * offset;
+            imitationTranslateX = getImitationTranslateX(canvasTranslateX);
+            radius = getFuncRadius(imitationTranslateX);
+            alpha = getFuncAlpha(imitationTranslateX);
+        } else {
+            imitationTranslateX = getImitationTranslateX(canvasTranslateX);
+            radius = getFuncRadius(imitationTranslateX);
+            alpha = getFuncAlpha(imitationTranslateX);
         }
-        if (canvasTranslateX < -MAX_CHANGE_WIDTH) {
-            return;
-        }
-        paint.setAlpha(getFuncAlpha(canvasTranslateX));
-        canvas.translate(canvasTranslateX, 0);
-        canvas.drawCircle(mWidth / 2, mHeight / 2, getFuncRadius(canvasTranslateX), paint);
-        canvas.translate(-canvasTranslateX, 0);
+        paint.setAlpha(alpha);
+        canvas.translate(imitationTranslateX, 0);
+        canvas.drawCircle(mWidth / 2, mHeight / 2, radius, paint);
+        canvas.translate(-imitationTranslateX, 0);
     }
 
 
@@ -136,7 +176,7 @@ public class QQMailRefreshView extends View {
     }
 
     public void startChangeWidthAnimation() {
-        ValueAnimator lengthAnimator = ValueAnimator.ofFloat(0, 3 * MAX_CHANGE_WIDTH);
+        ValueAnimator lengthAnimator = ValueAnimator.ofFloat(0, 2 * MAX_CHANGE_WIDTH + 2 * offset);
         lengthAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
